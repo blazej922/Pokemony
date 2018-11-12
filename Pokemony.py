@@ -1,29 +1,18 @@
 # -*- coding: utf-8 -*-
 
-import random
-import json
-import os
-import pymongo
-import pprint
+import random, json, os, pymongo, pprint
+from random import randrange
 
 myclient = pymongo.MongoClient("mongodb://localhost:27017/")
-
 mydb = myclient["pokidb"]
+print(mydb)
 
 atakikol = mydb["ataki"]
 pokikol = mydb["poki"]
 typykol = mydb["typy"]
 
-#result = atakikol.delete_many({})
+result = atakikol.delete_many({})
 result = typykol.delete_many({})
-#result = pokikol.delete_many({})
-pprint.pprint(pokikol.find()[0])
-for atak in atakikol.find():
-    pprint.pprint(atak)
-
-
-print(mydb)
-
 
 ataki = [
             {'nazwa' : 'Thunder_Shock', 'typ' : 'Elektryczny', 'pkt' : 8.33},
@@ -41,13 +30,15 @@ typy = [ {'typ' : 'Wodny'},
          {'typ' : 'Trawiasty'},
          {'typ' : 'Ognisty' } ]
 
+poki = [ {'nazwa' : 'Rajczu', 'typ' : 'Elektryczny', 'hp' : 40, 'pkta' : 10, 'ataki' : ['Thunder_Shock', 'Quick_Attack', 'Discharge']},
+         {'nazwa' : 'Blastoise', 'typ' : 'Wodny', 'hp' : 46, 'pkta' : 14, 'ataki' : ['Body Slam', 'Mud Bomb', 'Bubble Beam']},
+       ]
+
 
 x = atakikol.insert_many(ataki)
 y = typykol.insert_many(typy)
 
-myquery = { "typ": "Wodny" }
- 
-x = atakikol.find(myquery) 
+
 
 def wybierz_typ():
     lista = []
@@ -98,12 +89,10 @@ class Pokemon():
                     i=i+1
         return self.ataki
 
-    def atakuj(self):
-        for n in self.ataki:
-            print(n)
-        
-
-    
+    def atakuj(self,  atak, przeciwnik):
+        przeciwnik.hp = przeciwnik.hp - atak['pkt']
+        print('{0} atakuje przeciwnika i zadaje {1} obrazen ! \n Przeciwnikowi pozostalo {2} pkt zycia.\n'.format(self.nazwa, atak['pkt'], przeciwnik.hp))
+        return przeciwnik.hp
 
 class Atak():
     def __init__(self, nazwa, sila_ataku, typ):
@@ -171,11 +160,42 @@ elif wybor == 2:
                                  'pkt' : nowy_atak.silaa,
                                 })
 
-
     
 elif wybor == 3:
     os.system('clear')
-    print('-->Pojedynek<--')
+    print('-->Pojedynek<--\n \n Wybierz dwa pokemony do walki z ponizszej listy:\n')
+    for element in pokikol.find():
+        pprint.pprint('{0} ({1})'.format(element['nazwa'], element['typ']))
+    i = 0
+    pokemony = []
+    while i < 2:
+        wybor = input('\n Twoj {0} wybor: '.format(i+1))
+        myquery = { "nazwa": wybor }
+        wynik_zapytania = pokikol.find_one(myquery) 
+        if wynik_zapytania == None:
+            print('\nPrawdopodobnie zle przepisales nazwe. Zwroc uwage na wielkosc liter.')
+        else:
+            pokemon = Pokemon(wynik_zapytania['nazwa'],
+                              wynik_zapytania['typ'],
+                              wynik_zapytania['hp'],
+                              wynik_zapytania['pkta'],
+                              )
+            for element in wynik_zapytania['ataki']:
+                pokemon.ataki.append(element)
+            pokemony.append(pokemon)
+            i=i+1
+    while pokemony[0].hp > 0 and pokemony[1].hp > 0 :
+        print('\nWybierz atak:\n')
+        i=0
+        for atak in pokemony[0].ataki:
+            print(i, atak['nazwa'])
+            i += 1
+        print('\n')
+
+        x = int(input('Wybierz atak z powyzszej listy:'))
+        pokemony[1].hp = pokemony[0].atakuj(pokemony[0].ataki[x], pokemony[1])
+        pokemony[0].hp = pokemony[1].atakuj(pokemony[1].ataki[randrange(3)], pokemony[0])
+    
 
 elif wybor == 4 :
     print('-->Zakonczono dzialanie programu<--')
